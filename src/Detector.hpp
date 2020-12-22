@@ -6,6 +6,7 @@
 #include <dlib/image_processing/frontal_face_detector.h>
 #include <dlib/image_processing/render_face_detections.h>
 #include <dlib/image_processing.h>
+#include <time.h>
 #define sFrames 3
 struct Vec2xS{
 	double x[68];
@@ -15,15 +16,25 @@ struct Vec2xS{
 	
 struct DetectorConfig{
 	double mouthThr;
-	double mouthM;
+	double mouthEx;
+	double posXOff;
+	double posYOff;
+	double posZOff;
+	double angXOff;
+	double angYOff;
+	double angZOff;
 	double posXM;
 	double posYM;
 	double posZM;
 	double angXM;
 	double angYM;
 	double angZM;
-	int smooth;
-}
+	double camalpha;
+	double cambeta;
+	double smooth;
+	bool toggleCam;
+	int camIndex;
+};
 
 struct Detector{
 	Detector();
@@ -41,3 +52,5 @@ struct Detector{
 	void updateSmooth();
 	void Exit();
 };
+extern DetectorConfig cfg;
+extern clock_t t5;

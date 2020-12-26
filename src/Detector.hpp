@@ -1,11 +1,5 @@
 #pragma once
-#include <dlib/image_processing.h>
-#define sFrames 3
-struct Vec2xS{
-	double x[68];
-	double y[68];
-	void copyShape(dlib::full_object_detection);
-};
+#include <time.h>
 	
 struct DetectorConfig{
 	double mouthThr;

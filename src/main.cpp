@@ -9,10 +9,10 @@
 #include <Id/CubismIdManager.hpp>
 #include <CubismDefaultParameterId.hpp>
 #include <Rendering/OpenGL/CubismRenderer_OpenGLES2.hpp>
-#include "LAppAllocator.hpp"            ///< Implement my own bullshit later
+#include "Allocator.hpp"            ///< Implement my own bullshit later
 #include "Model.hpp"
 
-LAppAllocator _cubismAllocator;              ///< Cubism SDK Allocator from the sample
+Allocator _cubismAllocator;              ///< Cubism SDK Allocator from the sample
 CubismFramework::Option _cubismOption;
 
 int winHeight = 200;
@@ -27,7 +27,7 @@ int main(void){
 	glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
 
 	GLFWwindow* window = glfwCreateWindow(winHeight, winWidth, "vttscpp", NULL, NULL);
-	if(window == NULL){
+	if(!window){
 		printf("glfwCreateWindow Failed\n");
 		glfwTerminate();
 		return 1;
@@ -47,11 +47,14 @@ int main(void){
 
 	CubismFramework::StartUp(&_cubismAllocator, &_cubismOption);
     CubismFramework::Initialize();
-    CubismMatrix44 projection;
 
 	l2dModel userModel;
 
 	LoadAssets("res/", "pinctov2_f", &userModel);
+    CubismMatrix44 projection;
+	projection.Scale(1.0f , (float)winWidth / (float)winHeight);
+	userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
+
 	cfg.camIndex=1;
 	det.Exit();
 	det.Exit();
@@ -76,13 +79,13 @@ int main(void){
             winWidth = now_w;
             winHeight = now_h;
             glViewport(0, 0, now_w, now_h);
+			projection.Scale(1.0f , (float)now_w / (float)now_h);
+			userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
 		}
 
-		projection.Scale(1.0f , static_cast<float>(now_w) / static_cast<float>(now_h));
 		glClearColor(0.0f, 0.5f, 1.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearDepth(1.0);
-		userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
 		userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->DrawModel();
 
 		glfwSwapBuffers(window);

@@ -5,8 +5,15 @@
 #include <dlib/opencv.h>
 #include <dlib/image_processing/frontal_face_detector.h>
 #include <dlib/image_processing/render_face_detections.h>
-#include <time.h>
+#include <dlib/image_processing.h>
 #include <math.h>
+#define sFrames 3
+
+struct Vec2xS{
+	double x[68];
+	double y[68];
+	void copyShape(dlib::full_object_detection);
+};
 
 pthread_t UpdateCam;
 

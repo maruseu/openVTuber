@@ -1,4 +1,11 @@
 #include "Detector.hpp"
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <dlib/opencv.h>
+#include <dlib/image_processing/frontal_face_detector.h>
+#include <dlib/image_processing/render_face_detections.h>
+#include <time.h>
 #include <math.h>
 
 pthread_t UpdateCam;

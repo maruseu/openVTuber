@@ -1,6 +1,6 @@
 CC = gcc
 
-PROJ_NAME = vtube
+PROJ_NAME = vttscpp
 
 DEFINES = -DCSM_TARGET_LINUX_GL -DGLEW_STATIC
 

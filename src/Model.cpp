@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string.h>
 #define STBI_NO_STDIO
 #define STBI_ONLY_PNG
@@ -7,17 +8,18 @@
 
 Detector det;
 ICubismModelSetting* modSetting = NULL;
-const Csm::CubismId* _idParamAngleX;
-const Csm::CubismId* _idParamAngleY;
-const Csm::CubismId* _idParamAngleZ;
-const Csm::CubismId* _idParamBodyAngleX;
-const Csm::CubismId* _idParamBodyAngleY;
-const Csm::CubismId* _idParamBodyAngleZ;
-const Csm::CubismId* _idParamEyeBallX;
-const Csm::CubismId* _idParamEyeBallY;
-const Csm::CubismId* _idParamMouthOpen;
-const Csm::CubismId* _idParamEyeLOpen;
-const Csm::CubismId* _idParamEyeROpen;
+CubismCdiJson* Cdi;
+const Csm::CubismId* idAngX;
+const Csm::CubismId* idAngY;
+const Csm::CubismId* idAngZ;
+const Csm::CubismId* idPosX;
+const Csm::CubismId* idPosY;
+const Csm::CubismId* idPosZ;
+const Csm::CubismId* idEyePosX;
+const Csm::CubismId* idEyePosY;
+const Csm::CubismId* idMouthOpen;
+const Csm::CubismId* idEyeOpenL;
+const Csm::CubismId* idEyeOpenR;
 
 struct texInfo
 {
@@ -45,7 +47,6 @@ texInfo* TextureFromPng(char * filename)
     size_t size;
     unsigned char* png;
     unsigned char* address;
-	printf("%s\n", filename);
     address = LoadFile(filename, &size);
 
     png = stbi_load_from_memory(
@@ -95,15 +96,17 @@ texInfo* TextureFromPng(char * filename)
 
 void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
 	const char json[] = ".model3.json";
+	const char cdi[] = ".cdi3.json";
 	if(modSetting){
 		delete modSetting;
 		modSetting = NULL;
 	}
 
-	csmSizeInt pathlen = sizeof(char)*
+	size_t pathlen = sizeof(char)*
 		(strlen(dir)+strlen(filename)+1+strlen(filename)+strlen(json)+1);
 	char * path = (char*)malloc(pathlen);
 	snprintf(path,pathlen,"%s%s/%s%s",dir,filename,filename,json);
+	printf("Loading Model Setting %s\n",path);
 
 
 	size_t size;
@@ -114,19 +117,33 @@ void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
 	free(path);
 	path = NULL;
 
+	pathlen = sizeof(char)*
+		(strlen(dir)+strlen(filename)+1+strlen(filename)+strlen(cdi)+1);
+	path = (char*)malloc(pathlen);
+	snprintf(path,pathlen,"%s%s/%s%s",dir,filename,filename,cdi);
+	printf("Loading Cdi %s\n",path);
 
-	size_t modpathlen = sizeof(char)*
+
+	buffer = LoadFile(path,&size);
+	Cdi = new CubismCdiJson(buffer, size);
+	free(buffer);
+	buffer = NULL;
+	free(path);
+	path = NULL;
+
+
+	pathlen = sizeof(char)*
 		(strlen(modSetting->GetModelFileName())+strlen(filename)+1+strlen(dir)+1);
-	char * modpath = (char *)malloc(modpathlen);
-	snprintf(modpath,modpathlen,"%s%s/%s",dir,filename,modSetting->GetModelFileName());
-	printf("%s\n",modpath);
+	path = (char *)malloc(pathlen);
+	snprintf(path,pathlen,"%s%s/%s",dir,filename,modSetting->GetModelFileName());
+	printf("Loading Model File %s\n",path);
 
-	buffer = LoadFile(modpath, &size);
+	buffer = LoadFile(path, &size);
 	userModel->LoadModel(buffer, size);
 	free(buffer);
 	buffer = NULL;
-	free(modpath);
-	modpath = NULL;
+	free(path);
+	path = NULL;
 
 
 	userModel->CreateRenderer();
@@ -135,14 +152,15 @@ void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
         {
             continue;
         }
-		size_t texpathlen = sizeof(char)*
+		pathlen = sizeof(char)*
 			(strlen(dir)+strlen(filename)+1+strlen(modSetting->GetTextureFileName(i))+1);
-		char* texpath = (char*)malloc(texpathlen);
-		snprintf(texpath,texpathlen,"%s%s/%s",dir,filename,modSetting->GetTextureFileName(i));
+		path = (char*)malloc(pathlen);
+		snprintf(path,pathlen,"%s%s/%s",dir,filename,modSetting->GetTextureFileName(i));
+		printf("Loading Texture %s\n",path);
 
-        texInfo* info = TextureFromPng(texpath);
-		free(texpath);
-		texpath = NULL;
+        texInfo* info = TextureFromPng(path);
+		free(path);
+		path = NULL;
 
         userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->BindTexture(i, info->id);
 	}
@@ -153,29 +171,32 @@ void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
 #endif
     if (strcmp(modSetting->GetPhysicsFileName(), ""))
     {
-    	size_t phypathlen = sizeof(char)*
+    	pathlen = sizeof(char)*
     		(strlen(dir)+strlen(filename)+1+strlen(modSetting->GetPhysicsFileName())+1);
-    	char* phypath = (char*)malloc(phypathlen);
-    	snprintf(phypath,phypathlen,"%s%s/%s",dir,filename,modSetting->GetPhysicsFileName());
-    	printf("%s\n",phypath);
+    	path = (char*)malloc(pathlen);
+    	snprintf(path,pathlen,"%s%s/%s",dir,filename,modSetting->GetPhysicsFileName());
+		printf("Loading Physics %s\n",path);
 
-		buffer = LoadFile(phypath, &size);
+		buffer = LoadFile(path, &size);
 
         userModel->LoadPhysics(buffer, size);
+		free(path);
+		path = NULL;
     	free(buffer);
     	buffer = NULL;
     }
-    _idParamAngleX = CubismFramework::GetIdManager()->GetId(ParamAngleX);
-    _idParamAngleY = CubismFramework::GetIdManager()->GetId(ParamAngleY);
-    _idParamAngleZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
-    _idParamBodyAngleX = CubismFramework::GetIdManager()->GetId(ParamBodyAngleX);
-    _idParamBodyAngleY = CubismFramework::GetIdManager()->GetId(ParamBodyAngleY);
-    _idParamBodyAngleZ = CubismFramework::GetIdManager()->GetId(ParamBodyAngleZ);
-    _idParamEyeBallX = CubismFramework::GetIdManager()->GetId(ParamEyeBallX);
-    _idParamEyeBallY = CubismFramework::GetIdManager()->GetId(ParamEyeBallY);
-    _idParamMouthOpen = CubismFramework::GetIdManager()->GetId(ParamMouthOpenY);
-    _idParamEyeLOpen = CubismFramework::GetIdManager()->GetId(ParamEyeLOpen);
-    _idParamEyeROpen = CubismFramework::GetIdManager()->GetId(ParamEyeROpen);
+    idAngX = CubismFramework::GetIdManager()->GetId(ParamAngleX);
+    idAngY = CubismFramework::GetIdManager()->GetId(ParamAngleY);
+    idAngZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
+    idPosX = CubismFramework::GetIdManager()->GetId(ParamBodyAngleX);
+    idPosY = CubismFramework::GetIdManager()->GetId(ParamBodyAngleY);
+    idPosZ = CubismFramework::GetIdManager()->GetId(ParamBodyAngleZ);
+    idEyePosX = CubismFramework::GetIdManager()->GetId(ParamEyeBallX);
+    idEyePosY = CubismFramework::GetIdManager()->GetId(ParamEyeBallY);
+    idMouthOpen = CubismFramework::GetIdManager()->GetId(ParamMouthOpenY);
+    idEyeOpenL = CubismFramework::GetIdManager()->GetId(ParamEyeLOpen);
+    idEyeOpenR = CubismFramework::GetIdManager()->GetId(ParamEyeROpen);
+
 
 }
 
@@ -184,26 +205,26 @@ void modelUpdate(l2dModel *userModel){
     userModel->model()->SaveParameters();
 
 	/* these go from -10 to 10 */
-    userModel->model()->AddParameterValue(_idParamBodyAngleX, (det.posX+cfg.posXOff)*cfg.posXM);
-    userModel->model()->AddParameterValue(_idParamBodyAngleY, (det.posY+cfg.posYOff)*cfg.posYM);
-    userModel->model()->AddParameterValue(_idParamBodyAngleZ, (det.posZ+cfg.posZOff)*cfg.posZM);
+    userModel->model()->AddParameterValue(idPosX, (det.posX+cfg.posXOff)*cfg.posXM);
+    userModel->model()->AddParameterValue(idPosY, (det.posY+cfg.posYOff)*cfg.posYM);
+    userModel->model()->AddParameterValue(idPosZ, (det.posZ+cfg.posZOff)*cfg.posZM);
 
 	/* these 3 goes from -30 to 30 by default */                                               
-    userModel->model()->AddParameterValue(_idParamAngleX, (det.angX+cfg.angXOff)*cfg.angXM); 
-    userModel->model()->AddParameterValue(_idParamAngleY, (det.angY+cfg.angYOff)*cfg.angYM);
-    userModel->model()->AddParameterValue(_idParamAngleZ, (det.angZ+cfg.angZOff)*cfg.angZM);
+    userModel->model()->AddParameterValue(idAngX, (det.angX+cfg.angXOff)*cfg.angXM); 
+    userModel->model()->AddParameterValue(idAngY, (det.angY+cfg.angYOff)*cfg.angYM);
+    userModel->model()->AddParameterValue(idAngZ, (det.angZ+cfg.angZOff)*cfg.angZM);
 
-    userModel->model()->AddParameterValue(_idParamMouthOpen, det.mouthOpen);/* 0 to 1 */
+    userModel->model()->AddParameterValue(idMouthOpen, det.mouthOpen);/* 0 to 1 */
 
 	/* the eye open parameters goes from 0 to 1 however its default value is 1
 	 * so the value to be added needs to be between -1 and 0 */
-    userModel->model()->AddParameterValue(_idParamEyeLOpen, det.eyeOpenL*4 - 1);
-    userModel->model()->AddParameterValue(_idParamEyeROpen, det.eyeOpenR*4 - 1);
+    userModel->model()->AddParameterValue(idEyeOpenL, det.eyeOpenL*4 - 1);
+    userModel->model()->AddParameterValue(idEyeOpenR, det.eyeOpenR*4 - 1);
 
 	/* Eyeball position parameter -1 to 1 */
 	/* Todo: actually track these values :^) */
-    userModel->model()->AddParameterValue(_idParamEyeBallX, 0);
-    userModel->model()->AddParameterValue(_idParamEyeBallY, 0);
+    userModel->model()->AddParameterValue(idEyePosX, 0);
+    userModel->model()->AddParameterValue(idEyePosY, 0);
 
     if (userModel->breath())
     {

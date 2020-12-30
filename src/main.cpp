@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <CubismFramework.hpp>
@@ -9,14 +12,16 @@
 #include <Id/CubismIdManager.hpp>
 #include <CubismDefaultParameterId.hpp>
 #include <Rendering/OpenGL/CubismRenderer_OpenGLES2.hpp>
-#include "Allocator.hpp"            ///< Implement my own bullshit later
+#include "Allocator.hpp"
 #include "Model.hpp"
 
-Allocator _cubismAllocator;              ///< Cubism SDK Allocator from the sample
+Allocator _cubismAllocator;
 CubismFramework::Option _cubismOption;
 
-int winHeight = 200;
-int winWidth = 200;
+int winHeight = 500;
+int winWidth = 500;
+
+#include "Gui.hpp"
 
 int main(void){
 	if(glfwInit() == GL_FALSE){
@@ -25,6 +30,8 @@ int main(void){
 	}
 
 	glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, 1);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
 	GLFWwindow* window = glfwCreateWindow(winHeight, winWidth, "vttscpp", NULL, NULL);
 	if(!window){
@@ -56,8 +63,8 @@ int main(void){
 	userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
 
 	cfg.camIndex=1;
-	det.Exit();
-	det.Exit();
+
+	guiInit(window);
 
 	unsigned char _frames = 0;
 	char _titleBuffer[64];
@@ -72,6 +79,7 @@ int main(void){
 			_frames = 0;
 			_previousTime = _currentTime;
 		}
+		guiUpdate();
 		modelUpdate(&userModel);
 		det.updateSmooth();
         glfwGetWindowSize(window, &now_w, &now_h);
@@ -83,11 +91,14 @@ int main(void){
 			userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
 		}
 
-		glClearColor(0.0f, 0.5f, 1.0f, 0.0f);
+		if(bgAdd) glClearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3]);
+		else glClearColor(bgColor[0]*bgColor[3], bgColor[1]*bgColor[3], bgColor[2]*bgColor[3], bgColor[3]);
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearDepth(1.0);
 		userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->DrawModel();
 
+		guiRender();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <unistd.h>
 #define STBI_NO_STDIO
 #define STBI_ONLY_PNG
 #define STB_IMAGE_IMPLEMENTATION
@@ -7,7 +8,7 @@
 
 Detector det;
 ICubismModelSetting* modSetting = NULL;
-CubismCdiJson* Cdi;
+CubismCdiJson* Cdi = NULL;
 const Csm::CubismId* idAngX;
 const Csm::CubismId* idAngY;
 const Csm::CubismId* idAngZ;
@@ -95,92 +96,105 @@ void mkStr(size_t bufSize, char * buf, ...){
 }
 
 
-void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
+int LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
 	const char json[] = ".model3.json";
 	const char cdi[] = ".cdi3.json";
 	if(modSetting){
 		delete modSetting;
 		modSetting = NULL;
 	}
+	if(Cdi){
+		delete Cdi;
+		Cdi = NULL;
+	}
 
 	char path[512];
 	//Load model setting
 	mkStr(sizeof(path),path,dir,filename,"/",filename,json,"\0");
-	printf("Loading Model Setting %s\n",path);
+	if(access(path, R_OK) == 0){
+		printf("Loading Model Setting %s\n",path);
 
-	size_t size;
-	csmByte* buffer = LoadFile(path,&size);
-	modSetting = new CubismModelSettingJson(buffer, size);
-	free(buffer);
-	buffer = NULL;
+		size_t size;
+		csmByte* buffer = LoadFile(path,&size);
+		modSetting = new CubismModelSettingJson(buffer, size);
+		free(buffer);
+		buffer = NULL;
 
-	//Load cdi
-	mkStr(sizeof(path),path,dir,filename,"/",filename,cdi,"\0");
-	printf("Loading Cdi %s\n",path);
+		//Load cdi
+		mkStr(sizeof(path),path,dir,filename,"/",filename,cdi,"\0");
+		if(access(path, R_OK) == 0){
+		printf("Loading Cdi %s\n",path);
 
-	buffer = LoadFile(path,&size);
-	Cdi = new CubismCdiJson(buffer, size);
-	free(buffer);
-	buffer = NULL;
+		buffer = LoadFile(path,&size);
+		Cdi = new CubismCdiJson(buffer, size);
+		free(buffer);
+		buffer = NULL;
+		} else printf("No Cdi file availible");
 
-	//Load Model
-	mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetModelFileName(),"\0");
-	printf("Loading Model File %s\n",path);
-
-	buffer = LoadFile(path, &size);
-	userModel->LoadModel(buffer, size);
-	free(buffer);
-	buffer = NULL;
-
-	userModel->CreateRenderer();
-	//Load Textures
-	for(unsigned int i = 0; i < modSetting->GetTextureCount();i++){
-        if (strcmp(modSetting->GetTextureFileName(i), "") == 0)
-        {
-            continue;
-        }
-		mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetTextureFileName(i),"\0");
-		printf("Loading Texture %s\n",path);
-
-        texInfo* info = TextureFromPng(path);
-        userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->BindTexture(i, info->id);
-	}
-    userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->IsPremultipliedAlpha(false);
-
-	//Load Physics
-    if (strcmp(modSetting->GetPhysicsFileName(), ""))
-    {
-		mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetPhysicsFileName(),"\0");
-		printf("Loading Physics %s\n",path);
+		//Load Model
+		mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetModelFileName(),"\0");
+		printf("Loading Model File %s\n",path);
 
 		buffer = LoadFile(path, &size);
+		userModel->LoadModel(buffer, size);
+		free(buffer);
+		buffer = NULL;
 
-        userModel->LoadPhysics(buffer, size);
-    	free(buffer);
-    	buffer = NULL;
-    }
+		userModel->CreateRenderer();
+		//Load Textures
+		for(unsigned int i = 0; i < modSetting->GetTextureCount();i++){
+			if (strcmp(modSetting->GetTextureFileName(i), "") == 0)
+			{
+				continue;
+			}
+			mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetTextureFileName(i),"\0");
+			printf("Loading Texture %s\n",path);
 
-	//Setup Breath
-	{
-		userModel->createBreath();
-		csmVector<CubismBreath::BreathParameterData> breathParameter;
-		breathParameter.PushBack(CubismBreath::BreathParameterData(CubismFramework::GetIdManager()->GetId(ParamBreath), 0.5f, 0.5f, 3.2345f, 0.5f));
-		userModel->breath()->SetParameters(breathParameter);
-	}
+			texInfo* info = TextureFromPng(path);
+			userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->BindTexture(i, info->id);
+		}
+		userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->IsPremultipliedAlpha(false);
+
+		//Load Physics
+		if (strcmp(modSetting->GetPhysicsFileName(), ""))
+		{
+			mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetPhysicsFileName(),"\0");
+			printf("Loading Physics %s\n",path);
+
+			buffer = LoadFile(path, &size);
+
+			userModel->LoadPhysics(buffer, size);
+			free(buffer);
+			buffer = NULL;
+		}
+
+		//Setup Breath
+		{
+			userModel->createBreath();
+			csmVector<CubismBreath::BreathParameterData> breathParameter;
+			breathParameter.PushBack(CubismBreath::BreathParameterData(CubismFramework::GetIdManager()->GetId(ParamBreath), 0.5f, 0.5f, 3.2345f, 0.5f));
+			userModel->breath()->SetParameters(breathParameter);
+		}
 
 
-	//Assign Default Parameters
-    idAngX = CubismFramework::GetIdManager()->GetId(ParamAngleX);
-    idAngY = CubismFramework::GetIdManager()->GetId(ParamAngleY);
-    idAngZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
-    idPosX = CubismFramework::GetIdManager()->GetId(ParamBodyAngleX);
-    idPosY = CubismFramework::GetIdManager()->GetId(ParamBodyAngleY);
-    idPosZ = CubismFramework::GetIdManager()->GetId(ParamBodyAngleZ);
-    idEyePosX = CubismFramework::GetIdManager()->GetId(ParamEyeBallX);
-    idEyePosY = CubismFramework::GetIdManager()->GetId(ParamEyeBallY);
-    idMouthOpen = CubismFramework::GetIdManager()->GetId(ParamMouthOpenY);
-    idEyeOpenL = CubismFramework::GetIdManager()->GetId(ParamEyeLOpen);
-    idEyeOpenR = CubismFramework::GetIdManager()->GetId(ParamEyeROpen);
+		//Assign Default Parameters
+		idAngX = CubismFramework::GetIdManager()->GetId(ParamAngleX);
+		idAngY = CubismFramework::GetIdManager()->GetId(ParamAngleY);
+		idAngZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
+		idPosX = CubismFramework::GetIdManager()->GetId(ParamBodyAngleX);
+		idPosY = CubismFramework::GetIdManager()->GetId(ParamBodyAngleY);
+		idPosZ = CubismFramework::GetIdManager()->GetId(ParamBodyAngleZ);
+		idEyePosX = CubismFramework::GetIdManager()->GetId(ParamEyeBallX);
+		idEyePosY = CubismFramework::GetIdManager()->GetId(ParamEyeBallY);
+		idMouthOpen = CubismFramework::GetIdManager()->GetId(ParamMouthOpenY);
+		idEyeOpenL = CubismFramework::GetIdManager()->GetId(ParamEyeLOpen);
+		idEyeOpenR = CubismFramework::GetIdManager()->GetId(ParamEyeROpen);
+
+		return true;
+	} else
+		printf("Failed to load %s\n",path);
+
+	return false;
 }
 
 void modelUpdate(l2dModel *userModel){

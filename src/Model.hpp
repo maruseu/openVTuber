@@ -46,6 +46,6 @@ class l2dModel: public CubismUserModel {
 	}
 };
 
-void LoadAssets(const char* dir, const char* filename, l2dModel * userModel);
+int LoadAssets(const char* dir, const char* filename, l2dModel * userModel);
 
 void modelUpdate(l2dModel * userModel);

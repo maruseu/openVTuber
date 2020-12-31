@@ -57,10 +57,8 @@ int main(void){
 
 	l2dModel userModel;
 
-	LoadAssets("res/", "pinctov2_f", &userModel);
     CubismMatrix44 projection;
 	projection.Scale(1.0f , (float)winWidth / (float)winHeight);
-	userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
 
 	cfg.camIndex=1;
 
@@ -82,8 +80,7 @@ int main(void){
 			_frames = 0;
 			_previousTime = _currentTime;
 		}
-		guiUpdate();
-		modelUpdate(&userModel);
+		guiUpdate(&userModel,&projection);
 		det.updateSmooth();
         glfwGetWindowSize(window, &now_w, &now_h);
         if((winWidth!=now_w || winHeight!=now_h || modelScale!=nowScale || modelX!=nowModX || modelY!=nowModY) && now_w>0 && now_h>0){
@@ -103,7 +100,10 @@ int main(void){
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearDepth(1.0);
-		userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->DrawModel();
+		if(userModel.model()){
+			modelUpdate(&userModel);
+			userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->DrawModel();
+		}
 
 		guiRender();
 		glfwSwapBuffers(window);

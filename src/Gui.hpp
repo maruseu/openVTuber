@@ -38,6 +38,7 @@ bool bgAdd = false;
 float guiX[16]={0.0f};
 const char defaultItem[] = "Default";
 const char* currentItem[32] = {defaultItem};
+char modLoadBuff[128];
 uint16_t panelsOpen;
 enum guiPanels{
 	panMain = 1,
@@ -71,7 +72,7 @@ void guiRender(){
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
-void guiUpdate(){
+void guiUpdate(l2dModel* model, CubismMatrix44* proj){
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
@@ -81,6 +82,12 @@ void guiUpdate(){
 		ImGui::SetNextWindowSize(ImVec2(200,winHeight-10), ImGuiCond_Always);
 		{
 			ImGui::Begin("Shid",NULL,gui_flags);
+			ImGui::InputText("Model name",modLoadBuff,sizeof(modLoadBuff));
+			if(ImGui::Button("Load model")){
+				if(LoadAssets("res/", modLoadBuff, model))
+					model->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(proj);
+			}
+
 			ImGui::Text("Camera levels");
 			ImGui::SliderFloat("Contrast",&camAlpha,-5.0f,10.0f,"%.2f",0);
 			cfg.camalpha = camAlpha;
@@ -110,10 +117,14 @@ void guiUpdate(){
 			ImGui::Checkbox("BG Blend Addition", &bgAdd);
 			if(ImGui::Button("Parameters Override"))
 				if(panelsOpen&panParamOver) panelsOpen&=~panParamOver;
-				else panelsOpen|=panParamOver;
+				else {panelsOpen=panMain;
+					panelsOpen|=panParamOver;
+				}
 			if(ImGui::Button("Inputs Setting"))
 				if(panelsOpen&panInSettings) panelsOpen&=~panInSettings;
-				else panelsOpen|=panInSettings;
+				else {panelsOpen=panMain;
+					 panelsOpen|=panInSettings;
+				}
 			ImGui::End();
 		}
 	}
@@ -134,8 +145,8 @@ void guiUpdate(){
 			PARAMDROPDOWN(idPosZ,"H. Pos. Z",(det.posZ+cfg.posZOff)*cfg.posZM)
 			PARAMDROPDOWN(idEyeOpenL,"Eye Open L",det.eyeOpenL*8 - 2)
 			PARAMDROPDOWN(idEyeOpenR,"Eye Open R",det.eyeOpenR*8 - 2)
-			PARAMDROPDOWN(idEyePosX,"Eye Pos. X",0)
-			PARAMDROPDOWN(idEyePosY,"Eye Pos. Y",0)
+			PARAMDROPDOWN(idEyePosX,"Eye Pos. X",0.0f)
+			PARAMDROPDOWN(idEyePosY,"Eye Pos. Y",0.0f)
 			PARAMDROPDOWN(idMouthOpen,"Mouth Open",det.mouthOpen)
 			ImGui::End();
 		}

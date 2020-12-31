@@ -28,7 +28,8 @@ void calcAngX(Vec2xS);
 void calcAngY(Vec2xS);
 void calcAngZ(Vec2xS);
 void calcMouthOpen(Vec2xS);
-void calcEyeOpen(Vec2xS);
+void calcEyeOpenR(Vec2xS);
+void calcEyeOpenL(Vec2xS);
 double calcBlink(Vec2xS);
 
 bool stop=false;
@@ -41,7 +42,8 @@ double in_posX=0;
 double in_posY=0;
 double in_posZ=0;
 double in_mouthOpen=0;
-double in_eyeOpen=0;
+double in_eyeOpenR=0;
+double in_eyeOpenL=0;
 clock_t t5;
 
 DetectorConfig cfg = {
@@ -97,10 +99,10 @@ void Detector::updateSmooth(){
 	posZ+=(in_posZ-posZ)/cfg.smooth;
 
 	mouthOpen+=(((in_mouthOpen-cfg.mouthThr)*cfg.mouthEx)-mouthOpen)/(cfg.smooth/2);
-	eyeOpenL+=(in_eyeOpen - eyeOpenL)/cfg.smooth;
-	eyeOpenL=(in_eyeOpen == 0) ? 0 : eyeOpenL;
-	eyeOpenR+=(in_eyeOpen - eyeOpenR)/cfg.smooth;
-	eyeOpenR=(in_eyeOpen == 0) ? 0 : eyeOpenR;
+	eyeOpenL=(in_eyeOpenL <= 0.01f) ? 0.0f : eyeOpenL;
+	eyeOpenL+=(in_eyeOpenL - eyeOpenL)/cfg.smooth;
+	eyeOpenR=(in_eyeOpenR <= 0.01f) ? 0.0f : eyeOpenR;
+	eyeOpenR+=(in_eyeOpenR - eyeOpenR)/cfg.smooth;
 }
 
 void Detector::Exit(){
@@ -184,10 +186,12 @@ void * Update(void * arg){
 
 					calcPosX(smoothShape,frame.rows);
 					calcPosY(smoothShape,frame.cols);
-					if(in_eyeOpen - calcBlink(shapes[sFrame]) > 0.07){
-						in_eyeOpen=0;
+					calcEyeOpenR(smoothShape);
+					calcEyeOpenL(smoothShape);
+					if((in_eyeOpenR + in_eyeOpenL)/2  - calcBlink(shapes[sFrame]) > 0.07){
+						in_eyeOpenR=0;
+						in_eyeOpenL=0;
 					} else
-						calcEyeOpen(smoothShape);
 
 
 					calcAngX(smoothShape);
@@ -271,10 +275,19 @@ double calcBlink(Vec2xS detShape){
 	double i=distance(detShape,43,47);
 	i+=distance(detShape,44,46);
 	i/=distance(detShape,42,45)*2;
+	double i2=distance(detShape,38,40);
+	i2+=distance(detShape,37,41);
+	i2/=distance(detShape,36,39)*2;
+	i=(i+i2)/2;
 	return i;
 }
-void calcEyeOpen(Vec2xS detShape){
-	in_eyeOpen=distance(detShape,43,47);
-	in_eyeOpen+=distance(detShape,44,46);
-	in_eyeOpen/=distance(detShape,42,45)*2;
+void calcEyeOpenR(Vec2xS detShape){
+	in_eyeOpenR=distance(detShape,43,47);
+	in_eyeOpenR+=distance(detShape,44,46);
+	in_eyeOpenR/=distance(detShape,42,45)*2;
+}
+void calcEyeOpenL(Vec2xS detShape){
+	in_eyeOpenL=distance(detShape,38,40);
+	in_eyeOpenL+=distance(detShape,37,41);
+	in_eyeOpenL/=distance(detShape,36,39)*2;
 }

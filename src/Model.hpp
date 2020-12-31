@@ -38,6 +38,9 @@ class l2dModel: public CubismUserModel {
 	CubismBreath* breath(){
 		return _breath;
 	}
+	void createBreath(){
+		_breath=CubismBreath::Create();
+	}
 	CubismPhysics* physics(){
 		return _physics;
 	}

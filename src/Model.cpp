@@ -1,4 +1,3 @@
-#include <iostream>
 #include <string.h>
 #define STBI_NO_STDIO
 #define STBI_ONLY_PNG
@@ -56,17 +55,6 @@ texInfo* TextureFromPng(char * filename)
         &height,
         &channels,
         STBI_rgb_alpha);
-    {
-
-#ifdef PREMULTIPLIED_ALPHA_ENABLE
-        unsigned int* fourBytes = reinterpret_cast<unsigned int*>(png);
-        for (int i = 0; i < width * height; i++)
-        {
-            unsigned char* p = png + i * 4;
-            fourBytes[i] = Premultiply(p[0], p[1], p[2], p[3]);
-        }
-#endif
-    }
 
     glGenTextures(1, &textureId);
     glBindTexture(GL_TEXTURE_2D, textureId);
@@ -93,6 +81,19 @@ texInfo* TextureFromPng(char * filename)
 
 }
 
+void mkStr(size_t bufSize, char * buf, ...){
+	va_list args;
+	char * currentStr;
+	va_start(args, buf);
+		currentStr = va_arg(args,char *);
+		strncpy(buf, currentStr, bufSize);
+		while(strcmp(currentStr,"\0")!=0){
+			currentStr = va_arg(args,char *);
+			strncat(buf, currentStr, bufSize);
+		}
+	va_end(args);
+}
+
 
 void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
 	const char json[] = ".model3.json";
@@ -102,89 +103,73 @@ void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
 		modSetting = NULL;
 	}
 
-	size_t pathlen = sizeof(char)*
-		(strlen(dir)+strlen(filename)+1+strlen(filename)+strlen(json)+1);
-	char * path = (char*)malloc(pathlen);
-	snprintf(path,pathlen,"%s%s/%s%s",dir,filename,filename,json);
+	char path[512];
+	//Load model setting
+	mkStr(sizeof(path),path,dir,filename,"/",filename,json,"\0");
 	printf("Loading Model Setting %s\n",path);
-
 
 	size_t size;
 	csmByte* buffer = LoadFile(path,&size);
 	modSetting = new CubismModelSettingJson(buffer, size);
 	free(buffer);
 	buffer = NULL;
-	free(path);
-	path = NULL;
 
-	pathlen = sizeof(char)*
-		(strlen(dir)+strlen(filename)+1+strlen(filename)+strlen(cdi)+1);
-	path = (char*)malloc(pathlen);
-	snprintf(path,pathlen,"%s%s/%s%s",dir,filename,filename,cdi);
+	//Load cdi
+	mkStr(sizeof(path),path,dir,filename,"/",filename,cdi,"\0");
 	printf("Loading Cdi %s\n",path);
-
 
 	buffer = LoadFile(path,&size);
 	Cdi = new CubismCdiJson(buffer, size);
 	free(buffer);
 	buffer = NULL;
-	free(path);
-	path = NULL;
 
-
-	pathlen = sizeof(char)*
-		(strlen(modSetting->GetModelFileName())+strlen(filename)+1+strlen(dir)+1);
-	path = (char *)malloc(pathlen);
-	snprintf(path,pathlen,"%s%s/%s",dir,filename,modSetting->GetModelFileName());
+	//Load Model
+	mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetModelFileName(),"\0");
 	printf("Loading Model File %s\n",path);
 
 	buffer = LoadFile(path, &size);
 	userModel->LoadModel(buffer, size);
 	free(buffer);
 	buffer = NULL;
-	free(path);
-	path = NULL;
-
 
 	userModel->CreateRenderer();
+	//Load Textures
 	for(unsigned int i = 0; i < modSetting->GetTextureCount();i++){
         if (strcmp(modSetting->GetTextureFileName(i), "") == 0)
         {
             continue;
         }
-		pathlen = sizeof(char)*
-			(strlen(dir)+strlen(filename)+1+strlen(modSetting->GetTextureFileName(i))+1);
-		path = (char*)malloc(pathlen);
-		snprintf(path,pathlen,"%s%s/%s",dir,filename,modSetting->GetTextureFileName(i));
+		mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetTextureFileName(i),"\0");
 		printf("Loading Texture %s\n",path);
 
         texInfo* info = TextureFromPng(path);
-		free(path);
-		path = NULL;
-
         userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->BindTexture(i, info->id);
 	}
-#ifdef PREMULTIPLIED_ALPHA_ENABLE
-    userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->IsPremultipliedAlpha(true);
-#else
     userModel->GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->IsPremultipliedAlpha(false);
-#endif
+
+	//Load Physics
     if (strcmp(modSetting->GetPhysicsFileName(), ""))
     {
-    	pathlen = sizeof(char)*
-    		(strlen(dir)+strlen(filename)+1+strlen(modSetting->GetPhysicsFileName())+1);
-    	path = (char*)malloc(pathlen);
-    	snprintf(path,pathlen,"%s%s/%s",dir,filename,modSetting->GetPhysicsFileName());
+		mkStr(sizeof(path),path,dir,filename,"/",modSetting->GetPhysicsFileName(),"\0");
 		printf("Loading Physics %s\n",path);
 
 		buffer = LoadFile(path, &size);
 
         userModel->LoadPhysics(buffer, size);
-		free(path);
-		path = NULL;
     	free(buffer);
     	buffer = NULL;
     }
+
+	//Setup Breath
+	{
+		userModel->createBreath();
+		csmVector<CubismBreath::BreathParameterData> breathParameter;
+		breathParameter.PushBack(CubismBreath::BreathParameterData(CubismFramework::GetIdManager()->GetId(ParamBreath), 0.5f, 0.5f, 3.2345f, 0.5f));
+		userModel->breath()->SetParameters(breathParameter);
+	}
+
+
+	//Assign Default Parameters
     idAngX = CubismFramework::GetIdManager()->GetId(ParamAngleX);
     idAngY = CubismFramework::GetIdManager()->GetId(ParamAngleY);
     idAngZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
@@ -196,8 +181,6 @@ void LoadAssets(const char* dir, const char* filename, l2dModel * userModel){
     idMouthOpen = CubismFramework::GetIdManager()->GetId(ParamMouthOpenY);
     idEyeOpenL = CubismFramework::GetIdManager()->GetId(ParamEyeLOpen);
     idEyeOpenR = CubismFramework::GetIdManager()->GetId(ParamEyeROpen);
-
-
 }
 
 void modelUpdate(l2dModel *userModel){
@@ -218,8 +201,8 @@ void modelUpdate(l2dModel *userModel){
 
 	/* the eye open parameters goes from 0 to 1 however its default value is 1
 	 * so the value to be added needs to be between -1 and 0 */
-    userModel->model()->AddParameterValue(idEyeOpenL, det.eyeOpenL*4 - 1);
-    userModel->model()->AddParameterValue(idEyeOpenR, det.eyeOpenR*4 - 1);
+    userModel->model()->AddParameterValue(idEyeOpenL, det.eyeOpenL*6 - 2);
+    userModel->model()->AddParameterValue(idEyeOpenR, det.eyeOpenR*6 - 2);
 
 	/* Eyeball position parameter -1 to 1 */
 	/* Todo: actually track these values :^) */

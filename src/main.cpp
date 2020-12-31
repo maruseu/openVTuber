@@ -69,6 +69,9 @@ int main(void){
 	unsigned char _frames = 0;
 	char _titleBuffer[64];
 	double _previousTime = 0;
+	float modelScale = 1.0f;
+	float modelX = 0.0f;
+	float modelY = 0.0f;
 	while(!glfwWindowShouldClose(window)){
 		int now_w, now_h;
 		double _currentTime = glfwGetTime();
@@ -83,11 +86,15 @@ int main(void){
 		modelUpdate(&userModel);
 		det.updateSmooth();
         glfwGetWindowSize(window, &now_w, &now_h);
-        if((winWidth!=now_w || winHeight!=now_h) && now_w>0 && now_h>0){
+        if((winWidth!=now_w || winHeight!=now_h || modelScale!=nowScale || modelX!=nowModX || modelY!=nowModY) && now_w>0 && now_h>0){
             winWidth = now_w;
             winHeight = now_h;
+			modelScale = nowScale;
+			modelX = nowModX;
+			modelY = nowModY;
             glViewport(0, 0, now_w, now_h);
-			projection.Scale(1.0f , (float)now_w / (float)now_h);
+			projection.Scale(1.0f * modelScale, (float)now_w / (float)now_h * modelScale);
+			projection.Translate(modelX*modelScale,(float)now_w / (float)now_h * modelY*modelScale);
 			userModel.GetRenderer<Rendering::CubismRenderer_OpenGLES2>()->SetMvpMatrix(&projection);
 		}
 
